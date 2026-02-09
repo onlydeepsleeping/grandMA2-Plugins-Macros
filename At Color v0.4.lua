@@ -1,0 +1,377 @@
+-- Florian Granzow, 2026
+-- version: At Color v0.4       - fixed:
+--                              - implemented: merged "At Color P6" (v1) into this plugin
+
+-- how to use plugin:
+-- allowed input:               - lee or rosco color numbers
+--                              - "0" for "NC", "" for CTC input, "201" for L201, ".200" for "ctc L200", "6500" for color temperature preset, "red" for text input
+--                              - "/201" for color macros of Cameo P6 fixture (for attribute "Scroller", DSOB FixtureType!)
+
+-- set up variables:
+local inputColor                -- user input
+local inputCTC                  -- user input for CTC value
+local allNC = '0.301'           -- define "NC" preset in all preset pool
+local colorNC = '4."NC"'        -- define "NC" preset in color pool
+
+--          Color Table Cameo P6 Profile            --
+--       [Color name] = MA-Attribute value          --
+
+local colorTable = {
+['000   |	No function'] =                         2.0,
+['048	|	Rose Purple'] =                         2.4,
+['797	|	Deep Purple'] = 	                    2.7,
+['049	|	Medium Purple'] =                   	3.1,
+['126	|	Mauve'] = 	                            3.5,
+['798	|	Chrysalis Pink	'] = 	                3.9,
+['341	|	Plum'] = 	                            4.3,
+['345	|	Fuchsia Pink'] = 	                    4.7,
+['703	|	Cold Lavender'] =                       5.1,
+['052	|	Light Lavender'] =                  	5.5,
+['704	|	Lily'] = 	                            5.9,
+['039	|	Pink Incarnation'] = 	                6.3,
+['170	|	Deep Lavender'] =                   	6.7,
+['136	|	Pale Lavender'] =                   	7.1,
+['169	|	Lilac Tint'] = 	                        7.5,
+['702	|	Special Pale Lavender'] =           	7.8,
+['137	|	Special Lavender'] = 	                8.2,
+['194	|	Surprise Pink'] =                   	8.6,
+['058	|	Lavender'] =                        	9.0,
+['180	|	Dark Lavender'] = 	                    9.4,
+['343	|	Special Medium Lavender'] = 	        9.8,
+['701	|	Provence'] = 	                        10.2,
+['700	|	Perfect Lavender'] = 	                10.6,
+['181	|	Congo Blue'] =                      	11.0,
+['707	|	Ultimate Violet'] = 	                11.4,
+['706	|	King Fals Lavender'] =              	11.8,
+['709	|	Electric Lilac'] =                  	12.2,
+['142	|	Pale Violet'] =                     	12.5,
+['199	|	Regal Blue'] = 	                        12.9,
+['508	|	Midnight Maya'] = 	                    13.3,
+['799	|	Special KH Lavender'] =             	13.7,
+['071	|	Tokyo Blue'] = 	                        14.1,
+['713	|	J.Winter Blue'] =                   	14.5,
+['710	|	Spir Special Blue'] = 	                14.9,
+['198	|	Palace Blue'] =                     	15.3,
+['716	|	Mikkel Blue'] =                     	15.7,
+['195	|	Zenith Blue'] =                     	16.1,
+['715	|	Cabana Blue'] = 	                    16.5,
+['344	|	Violet'] =                           	16.9,
+['723	|	Virgin Blue'] = 	                    17.3,
+['721	|	Berry Blue'] = 	                        17.6,
+['120	|	Deep Blue'] = 	                        18.0,
+['363	|	Special Medium Blue'] =                 18.4,
+['085	|	Deeper Blue'] = 	                    18.8,
+['119	|	Dark Blue'] = 	                        19.2,
+['722	|	Bray Blue'] = 	                        19.6,
+['079	|	Just Blue'] = 	                        20.0,
+['714	|	Elysian Blue'] =                    	20.4,
+['075	|	Evening Blue'] = 	                    20.8,
+['525	|	Argent Blue'] =                     	21.2,
+['197	|	Alice Blue'] = 	                        21.6,
+['712	|	Bedford Blue'] =                    	22.0,
+['200	|	Double C.T. Blue'] =                	22.4,
+['719	|	Colour Wash Blue'] =                    22.7,
+['711	|	Cold Blue'] =                           23.1,
+['500	|	Double New Colour Blue'] =              23.5,
+['501	|	New Colour Blue (Robertson Blue)'] =    23.9,
+['708	|	Cool Lavender'] = 	                    24.3,
+['053	|	Paler Lavender'] = 	                    24.7,
+['502	|	Half New Colour Blue'] = 	            25.1,
+['503	|	Quarter New Colour Blue'] =         	25.5,
+['203	|	Quarter C.T. Blue'] =               	25.9,
+['600	|	Arctic White'] =                    	26.3,
+['601	|	Silver'] = 	                            26.7,
+['061	|	Mist Blue'] = 	                        27.1,
+['063	|	Pale Blue'] = 	                        27.5,
+['202	|	Half C.T. Blue'] =                  	27.8,
+['281	|	Three Quarter C.T. Blue'] =         	28.2,
+['201	|	Full C.T. Blue'] = 	                    28.6,
+['283	|	One and a Half C.T. Blue'] =        	29.0,
+['366	|	Cornflower'] = 	                        29.4,
+['174	|	Dark Steel Blue'] =                 	29.8,
+['161	|	Slate Blue'] =                          30.2,
+['068	|	Sky Blue'] =                            30.6,
+['132	|	Medium Blue'] =                         31.0,
+['165	|	Daylight Blue'] =                       31.4,
+['352	|	Glacier Blue'] =                        31.8,
+['143	|	Pale Navy Blue'] =                   	32.2,
+['196	|	True Blue'] =                           32.5,
+['727	|	QFD Blue'] = 	                        32.9,
+['141	|	Bright Blue'] =                     	33.3,
+['183	|	Moonlight Blue'] =                  	33.7,
+['118	|	Light Blue'] =                      	34.1,
+['724	|	Ocean Blue'] = 	                        34.5,
+['144	|	No Colour Blue'] = 	                    34.9,
+['725	|	Old Steel Blue'] = 	                    35.3,
+['117	|	Steel Blue'] = 	                        35.7,
+['140	|	Summer Blue'] = 	                    36.1,
+['353	|	Lighter Blue'] =                    	36.5,
+['172	|	Lagoon Blue'] = 	                    36.9,
+['354	|	Special Steel Blue'] =              	37.3,
+['729	|	Scuba Blue'] =                       	37.6,
+['116	|	Medium Blue'] =                     	38.0,
+['115	|	Peacock Blue'] =                    	38.4,
+['327	|	Forest Green'] =                    	38.8,
+['325	|	Mallard Green'] =                   	39.2,
+['124	|	Dark Green'] = 	                        39.6,
+['735	|	Velvet Green'] =                    	40.0,
+['323	|	Jade'] = 	                            40.4,
+['322	|	Soft Green'] =                      	40.8,
+['131	|	Marine Blue'] = 	                    41.2,
+['219	|	LEE Fluorescent Green'] = 	            41.6,
+['241	|	LEE Fluorescent 5700K'] = 	            42.0,
+['728	|	Steel Green'] = 	                    42.4,
+['504	|	Waterfront Green'] = 	                42.7,
+['730	|	Liberty Green'] = 	                    43.1,
+['242	|	LEE Fluorescent 4300K'] =           	43.5,
+['243	|	LEE Fluorescent 3600K'] =           	43.9,
+['213	|	White Flame Green'] = 	                44.3,
+['246	|	Quarter Plus Green'] =              	44.7,
+['731	|	Dirty Ice'] = 	                        45.1,
+['733	|	Damp Squib'] = 	                        45.5,
+['245	|	Half Plus Green'] = 	                45.9,
+['244	|	LEE Plus Green'] = 	                    46.3,
+['138	|	Pale Green'] =                      	46.7,
+['088	|	Lime Green'] = 	                        47.1,
+['505	|	Sally Green'] =                     	47.5,
+['738	|	JAS Green'] =                       	47.8,
+['121	|	LEE Green'] =                       	48.2,
+['122	|	Fern Green'] = 	                        48.6,
+['089	|	Moss Green'] =                      	49.0,
+['139	|	Primary Green'] = 	                    49.4,
+['090	|	Dark Yellow Green'] =               	49.8,
+['736	|	Twickenham Green'] =                	50.2,
+['740	|	Aurora Borealis Green'] =               50.6,
+['741	|	Mustard Yellow'] = 	                    51.0,
+['642	|	Half Mustard Yellow'] = 	            51.4,
+['650	|	Industry Sodium'] = 	                51.8,
+['746	|	Brown'] =                           	52.2,
+['653	|	LO Sodium'] =                       	52.5,
+['742	|	Bram Brown'] =                      	52.9,
+['208	|	Full C.T. Orange + .6ND'] = 	        53.3,
+['207	|	Full C.T. Orange + .3ND'] = 	        53.7,
+['232	|	Super Correction W.F. Green'] =         54.1,
+['230	|	Super Correction L.C.T. Yellow'] =      54.5,
+['156	|	Chocolate'] =                       	54.9,
+['237	|	C.I.D. (to Tungsten)'] =                55.3,
+['747	|	Easy White'] =                      	55.7,
+['238	|	C.S.I. (to Tungsten)'] =                56.1,
+['152	|	Pale Gold'] =                           56.5,
+['162	|	Bastard Amber'] =                   	56.9,
+['506	|	Marlene'] = 	                        57.3,
+['009   |	Pale Amber Gold'] =                 	57.6,
+['205	|	Half C.T. Orange'] = 	                58.0,
+['442	|	Half C.T. Straw'] = 	                58.4,
+['013	|	Straw Tint'] = 	                        58.8,
+['764	|	Sun Colour Straw'] = 	                59.2,
+['103	|	Straw'] =                           	59.6,
+['206	|	Quarter C.T. Orange'] =             	60.0,
+['443	|	Quarter C.T. Straw'] =              	60.4,
+['763	|	Wheat'] = 	                            60.8,
+['212	|	L.C.T.Yellow (Y1)'] =               	61.2,
+['007 	|	Pale Yellow'] =                     	61.6,
+['765	|	LEE Yellow'] = 	                        62.0,
+['102	|	Light Amber'] = 	                    62.4,
+['550	|	ALD Gold'] = 	                        62.7,
+['100	|	Spring Yellow'] =                   	63.1,
+['010	|	Medium Yellow'] =                   	63.5,
+['101	|	Yellow'] = 	                            63.9,
+['767	|	Oklahoma Yellow'] =                     64.3,
+['104	|	Deep Amber'] = 	                        64.7,
+['015	|	Deep Straw'] = 	                        65.1,
+['768	|	Egg Yolk Yellow'] = 	                65.5,
+['179	|	Chrome Orange'] =                   	65.9,
+['020	|	Medium Amber'] = 	                    66.3,
+['770	|	Burnt Yellow'] = 	                    66.7,
+['105	|	Orange'] =                          	67.1,
+['777	|	Rust'] = 	                            67.5,
+['652	|	Urban Sodium'] = 	                    67.8,
+['287	|	Double C.T. Orange'] =              	68.2,
+['204	|	Full C.T. Orange'] =                	68.6,
+['441	|	Full C.T. Straw'] = 	                69.0,
+['744	|	Dirty White'] = 	                    69.4,
+['285	|	Three Quarter C.T. Orange'] =       	69.8,
+['236	|	H.M.I. (to Tungsten)'] =            	70.2,
+['651	|	HI Sodium'] = 	                        70.6,
+['017	|	Surprise Peach'] =                  	71.0,
+['134	|	Golden Amber'] =                    	71.4,
+['147	|	Apricot'] =                         	71.8,
+['776	|	Nectarine'] = 	                        72.2,
+['773	|	Cardbox Amber'] = 	                    72.5,
+['108	|	English Rose'] = 	                    72.9,
+['008   |  	Dark Salmon'] = 	                    73.3,
+['779	|	Bastard Pink'] =                    	73.7,
+['158	|	Deep Orange'] = 	                    74.1,
+['021	|	Gold Amber'] =                      	74.5,
+['778	|	Millennium Gold'] =                 	74.9,
+['780	|	AS Golden Amber'] = 	                75.3,
+['022	|	Dark Amber'] =                      	75.7,
+['135	|	Deep Golden Amber'] = 	                76.1,
+['025	|	Sunset Red'] = 	                        76.5,
+['507	|	Madge'] =                           	76.9,
+['019	|	Fire'] = 	                            77.3,
+['164	|	Flame Red'] = 	                        77.6,
+['182	|	Light Red'] =                       	78.0,
+['781	|	Terry Red'] = 	                        78.4,
+['106	|	Primary Red'] =                     	78.8,
+['789	|	Blood Red'] =                       	79.2,
+['787	|	Marius Red'] = 	                        79.6,
+['027	|	Medium Red'] =                      	80.0,
+['029	|	Plasa Red'] = 	                        80.4,
+['026	|	Bright Red'] =                      	80.8,
+['024	|	Scarlet'] = 	                        81.2,
+['157	|	Pink'] = 	                            81.6,
+['107	|	Light Rose'] = 	                        82.0,
+['109	|	Light Salmon'] =                    	82.4,
+['176	|	Loving Amber'] = 	                    82.7,
+['790	|	Moroccan Pink'] =                   	83.1,
+['036	|	Medium Pink'] = 	                    83.5,
+['192	|	Flesh Pink'] = 	                        83.9,
+['111	|	Dark Pink'] = 	                        84.3,
+['794	|	Pretty n Pink'] =                   	84.7,
+['002   |	Rose Pink'] = 	                        85.1,
+['328	|	Follies Pink'] =                    	85.5,
+['795	|	Magical Magenta'] = 	                85.9,
+['128	|	Bright Pink'] = 	                    86.3,
+['793	|	Vanity Fair'] = 	                    86.7,
+['193	|	Rosy Amber'] = 	                        87.1,
+['332	|	Special Rose Pink'] = 	                87.5,
+['148	|	Bright Rose'] =                     	87.8,
+['046	|	Dark Magenta'] =                    	88.2,
+['113	|	Magenta'] =                         	88.6,
+['166	|	Pale Red'] =                        	89.0,
+['127	|	Smokey Pink'] =                     	89.4,
+['748	|	Seedy Pink'] = 	                        89.8,
+['110	|	Middle Rose'] = 	                    90.2,
+['247	|	LEE Minus Green'] =                 	90.6,
+['035	|	Light Pink'] =                      	91.0,
+['153	|	Pale Salmon'] = 	                    91.4,
+['004   |	Medium Bastard Amber'] = 	            91.8,
+['151	|	Gold Tint'] = 	                        92.2,
+['154	|	Pale Rose'] =                       	92.5,
+['248	|	Half Minus Green'] =                	92.9,
+['249	|	Quarter Minus Green'] = 	            93.3,
+['279	|	Eighth Minus Green'] = 	                93.7,
+['003 	|	Lavender Tint'] = 	                    94.1,
+['218	|	Eighth C.T. Blue'] =                	94.5,
+['278	|	Eighth Plus Green'] =                   94.9,
+['159	|	No Colour Straw'] = 	                95.3,
+['223	|	Eighth C.T. Orange'] = 	                95.7,
+['444	|	Eighth C.T. Straw'] = 	                96.1,
+['602	|	Platinum'] =                            96.5,
+['603	|	Moonlight White'] =                     96.9
+}
+
+local function message(msg)
+    gma.echo(msg)
+    gma.feedback(msg)
+end
+
+-- Function to perform color lookup
+local function lookupColorP6(colorName)
+    local matchingColors = {}
+    for name in pairs(colorTable) do
+        if string.find(name:lower(), colorName:lower(), 1, true) then
+            table.insert(matchingColors, name)
+        end
+    end
+
+    if #matchingColors == 0 then
+        message('Color not found')
+        gma.gui.msgbox('Gel not found!', 'Color not found in scroller (P6)')
+
+    elseif #matchingColors == 1 then
+        -- get attributeValue from colorTable with gelKey
+        local gelKey = matchingColors[1]
+        local attributeValue = colorTable[gelKey]
+
+        -- split gelKey apart to remove spaces and format feedback message
+        local gelNumber, colorText = gelKey:match('(%d+)%s*|%s*(.+)')
+
+        gma.cmd('Attribute Scroller At ' .. attributeValue)
+        message('Applied gel color: ' .. gelNumber .. ' - ' .. colorText)
+    elseif #matchingColors > 1 then
+        message('Error: More then one match!')
+    end
+end
+
+local function main()
+    inputColor = gma.textinput('Enter color (0 = NC, "" = CTC):', '')
+
+    -- 0 == "NC"
+    if inputColor == '0' then
+        gma.cmd('At Preset ' .. colorNC)
+        gma.sleep(0.1)
+        gma.cmd('At Preset ' .. allNC)
+        message('Applied preset "NC".')
+        return
+    end
+
+    -- "" == CTC
+    if inputColor == "" then
+        inputCTC = gma.textinput('Enter CTC value:', '')
+
+        if inputCTC == "" then
+            inputCTC = 0
+        end
+
+        gma.cmd('Attribute CTO + CTB At ' .. inputCTC)
+        message('Applied CTC of ' .. inputCTC .. '.')
+
+        return
+    end
+
+    -- / == lookup color gel cameo P6
+    if inputColor:find("%/") then
+        -- remove "." from string, get everything after it
+        inputColor = string.match(inputColor, "%/(.*)$")
+
+        -- format input to three digits: "26" -> "026"
+        inputColor = string.format('%03d', inputColor)
+
+        lookupColorP6(inputColor)
+
+        return
+    end
+
+    -- 4 digit numer == color temperature, apply directly
+    if tostring(inputColor):match("^%d%d%d%d") then
+        gma.cmd('At Preset 4."*' .. inputColor .. '*"')
+        message('Applied color temp of ' .. inputColor .. 'K.')
+        return
+    end
+
+    -- if "." is used to indicate ctc color (eg. ".201" for "ctc L 201")
+    if inputColor:find("%.") then
+        -- remove "." from string, get everything after it
+        inputColor = string.match(inputColor, "%.(.*)$")
+
+        gma.cmd('At Preset 4."ctc R ' .. inputColor .. '*"')
+        gma.cmd('At Preset 4."ctc L ' .. inputColor .. '*"')
+        message('Applied preset ctc L' .. inputColor .. ' / R' .. inputColor .. '.')
+
+        return
+    end
+
+    -- if input is text (e.g. "red")                                                            
+    if tonumber(inputColor) == nil then
+        gma.cmd('At Preset 4."*' .. inputColor .. '*"')
+        message('Applied preset "' .. inputColor .. '".')
+        return
+    end
+
+    -- fix to solve labeling error in DSOB color pallet
+    if inputColor == "161" then
+        gma.cmd('At Preset 4."L161*"')
+        message('Applied preset "L161".')
+        return
+    end
+
+    gma.cmd('At Preset 4."R ' .. inputColor .. '*"')    -- warum?? nur für "R023"??!?
+    gma.cmd('At Preset 4."*R ' .. inputColor .. '*"')
+    gma.cmd('At Preset 4."L ' .. inputColor .. '*"')
+
+    message('Applied preset L' .. inputColor .. ' / R' .. inputColor .. '.')
+end
+
+return main
